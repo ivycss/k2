@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://xmlns.jcp.org/xml/ns/j2ee" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/j2ee http://xmlns.jcp.org/xml/ns/j2ee/web-app_4_0.xsd" id="WebApp_ID" version="4.0">
+<web-app> xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://xmlns.jcp.org/xml/ns/j2ee" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/j2ee http://xmlns.jcp.org/xml/ns/j2ee/web-app_4_0.xsd" id="WebApp_ID" version="4.0">
   <display-name>GeekFactory</display-name>
   <welcome-file-list>
     <welcome-file>intro.jsp</welcome-file>
@@ -12,6 +12,12 @@
   		<form-error-page>/login-error.jsp</form-error-page>
   	</form-login-config> 
   </login-config>
+  
+    
+      <error-page>
+        <error-code>500</error-code>
+        <location>/error500.jsp</location>
+    </error-page>
      
   <security-constraint>
   	<web-resource-collection>
