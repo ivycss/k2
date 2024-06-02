@@ -1,5 +1,5 @@
 package model;
-
+import java.util.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -114,10 +114,17 @@ public class ProductModel {
 		return (result != 0);
 	}
 	public synchronized Collection<ProductBean> doRetrieveAll(String where) throws SQLException {
+		
+		List<String> validCategories = Arrays.asList("Arredamento Casa","Action Figures","Gadget");
 		Connection connection = null;
 		Connection connection2 = null;
 		PreparedStatement preparedStatement = null;
 		PreparedStatement preparedStatement2 = null;
+		
+		if(!validCategories.contains(where)) {
+			throw new SQLException("categoria non valida");
+			
+		}
 
 		Collection<ProductBean> products = new LinkedList<ProductBean>();
 

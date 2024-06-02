@@ -110,6 +110,7 @@ public class ProductControl extends HttpServlet {
 		}
 		else {
 		String tipologia = (String) request.getSession().getAttribute("tipologia");
+		
 
 		try { 
 			request.removeAttribute("products");
