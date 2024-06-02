@@ -1,12 +1,12 @@
 package control;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.SQLException;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -18,99 +18,85 @@ import model.DriverManagerConnectionPool;
 import model.OrderModel;
 import model.UserBean;
 
-/**
- * Servlet implementation class Login
- */
 @WebServlet("/Login")
 public class Login extends HttpServlet {
-	private static final long serialVersionUID = 1L;
-       
-    /**
-     * @see HttpServlet#HttpServlet()
-     */
+    private static final long serialVersionUID = 1L;
+
     public Login() {
         super();
-        // TODO Auto-generated constructor stub
     }
 
-	/**
-	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
-	 */
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		doPost(request, response);
-	}
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doPost(request, response);
+    }
 
-	/**
-	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
-	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		String email = request.getParameter("j_email");
-		String password = request.getParameter("j_password");
-		String redirectedPage = "/loginPage.jsp";
-		Boolean control = false;
-		try {
-			Connection con = DriverManagerConnectionPool.getConnection();
-			String sql = "SELECT email, passwordUser, ruolo, nome, cognome, indirizzo, telefono, numero, intestatario, CVV FROM UserAccount";
-			
-			Statement s = con.createStatement();
-			ResultSet rs = s.executeQuery(sql);
-			
-			while (rs.next()) {
-				if (email.compareTo(rs.getString(1)) == 0) {
-					String psw = checkPsw(password);
-					if (psw.compareTo(rs.getString(2)) == 0) {
-						control = true;
-						UserBean registeredUser = new UserBean();
-						registeredUser.setEmail(rs.getString(1));
-						registeredUser.setNome(rs.getString(4));
-						registeredUser.setCognome(rs.getString(5));
-						registeredUser.setIndirizzo(rs.getString(6));
-						registeredUser.setTelefono(rs.getString(7));
-						registeredUser.setNumero(rs.getString(8));
-						registeredUser.setIntestatario(rs.getString(9));
-						registeredUser.setCvv(rs.getString(10));
-						registeredUser.setRole(rs.getString(3));
-						request.getSession().setAttribute("registeredUser", registeredUser);
-						request.getSession().setAttribute("role", registeredUser.getRole());
-						request.getSession().setAttribute("email", rs.getString(1));
-						request.getSession().setAttribute("nome", rs.getString(6));
-						
-						OrderModel model = new OrderModel();
-						request.getSession().setAttribute("listaOrdini", model.getOrders(rs.getString(1)));
-						
-						redirectedPage = "/index.jsp";
-						DriverManagerConnectionPool.releaseConnection(con);
-					}
-				}
-			}
-		}
-		catch (Exception e) {
-			redirectedPage = "/loginPage.jsp";
-		}
-		if (control == false) {
-			request.getSession().setAttribute("login-error", true);
-		}
-		else {
-			request.getSession().setAttribute("login-error", false);
-		}
-		response.sendRedirect(request.getContextPath() + redirectedPage);
-	}
-		
-	private String checkPsw(String psw) {
-		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("MD5");
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-		byte[] messageDigest = md.digest(psw.getBytes());
-		BigInteger number = new BigInteger(1, messageDigest);
-		String hashtext = number.toString(16);
-		
-		return hashtext;
-	}
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String email = request.getParameter("j_email");
+        String password = request.getParameter("j_password");
+        String redirectedPage = "/loginPage.jsp";
+        boolean control = false;
 
+        try {
+            Connection con = DriverManagerConnectionPool.getConnection();
+            String sql = "SELECT email, passwordUser, ruolo, nome, cognome, indirizzo, telefono, numero, intestatario, CVV FROM UserAccount WHERE email=?";
+            
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                String storedHashedPassword = rs.getString("passwordUser");
+                String hashedPassword = hashPassword(password);
+
+                if (hashedPassword.equals(storedHashedPassword)) {
+                    control = true;
+
+                    UserBean registeredUser = new UserBean();
+                    registeredUser.setEmail(rs.getString("email"));
+                    registeredUser.setNome(rs.getString("nome"));
+                    registeredUser.setCognome(rs.getString("cognome"));
+                    registeredUser.setIndirizzo(rs.getString("indirizzo"));
+                    registeredUser.setTelefono(rs.getString("telefono"));
+                    registeredUser.setNumero(rs.getString("numero"));
+                    registeredUser.setIntestatario(rs.getString("intestatario"));
+                    registeredUser.setCvv(rs.getString("CVV"));
+                    registeredUser.setRole(rs.getString("ruolo"));
+
+                    request.getSession().setAttribute("registeredUser", registeredUser);
+                    request.getSession().setAttribute("role", registeredUser.getRole());
+                    request.getSession().setAttribute("email", rs.getString("email"));
+                    request.getSession().setAttribute("nome", rs.getString("nome"));
+
+                    OrderModel model = new OrderModel();
+                    request.getSession().setAttribute("listaOrdini", model.getOrders(rs.getString("email")));
+
+                    redirectedPage = "/index.jsp";
+                }
+            }
+
+            DriverManagerConnectionPool.releaseConnection(con);
+        } catch (SQLException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+
+        if (!control) {
+            request.getSession().setAttribute("login-error", true);
+        } else {
+            request.getSession().setAttribute("login-error", false);
+        }
+
+        response.sendRedirect(request.getContextPath() + redirectedPage);
+    }
+
+    private String hashPassword(String password) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] hashedPassword = md.digest(password.getBytes());
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hashedPassword) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
 }
